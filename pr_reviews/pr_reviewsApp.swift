@@ -1,17 +1,22 @@
-//
-//  pr_reviewsApp.swift
-//  pr_reviews
-//
-//  Created by Tomas Navickas on 10/02/2026.
-//
-
 import SwiftUI
 
 @main
 struct pr_reviewsApp: App {
+    @State private var gitHubService = GitHubService()
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra {
+            MenuBarView()
+                .environment(gitHubService)
+        } label: {
+            Image(systemName: "arrow.triangle.pull")
+            Text("\(gitHubService.unreviewedCount)")
+        }
+        .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView()
+                .environment(gitHubService)
         }
     }
 }
