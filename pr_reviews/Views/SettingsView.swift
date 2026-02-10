@@ -1,7 +1,19 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
-    @Environment(SettingsViewModel.self) var viewModel
+    @Environment(GitHubService.self) var service
+    @State private var tokenInput = ""
+    @State private var connectionStatus: ConnectionStatus = .unknown
+    @State private var isTesting = false
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+
+    enum ConnectionStatus {
+        case unknown
+        case testing
+        case connected(String)
+        case invalid
+    }
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -14,6 +26,21 @@ struct SettingsView: View {
                 Text("Needs `repo` scope for private repos, or just public access for public repos.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+
+            Section("General") {
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchAtLogin = !newValue
+                        }
+                    }
             }
 
             Section {
@@ -35,7 +62,26 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 450, height: 200)
+        .frame(width: 450, height: 280)
+        .onAppear {
+            // Workaround for a known Apple bug (FB10184971) where MenuBarExtra apps open
+            // settings behind other windows. The .accessory activation policy prevents windows
+            // from coming to front, so we temporarily switch to .regular and revert on disappear.
+            NSApp.setActivationPolicy(.regular)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) {
+                    window.orderFrontRegardless()
+                }
+            }
+            tokenInput = service.token
+            if let user = service.currentUser {
+                connectionStatus = .connected(user)
+            }
+        }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     @ViewBuilder
