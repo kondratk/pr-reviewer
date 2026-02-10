@@ -2,18 +2,8 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @Environment(GitHubService.self) var service
-    @State private var tokenInput = ""
-    @State private var connectionStatus: ConnectionStatus = .unknown
-    @State private var isTesting = false
+    @Environment(SettingsViewModel.self) var viewModel
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
-
-    enum ConnectionStatus {
-        case unknown
-        case testing
-        case connected(String)
-        case invalid
-    }
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -73,10 +63,6 @@ struct SettingsView: View {
                 for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) {
                     window.orderFrontRegardless()
                 }
-            }
-            tokenInput = service.token
-            if let user = service.currentUser {
-                connectionStatus = .connected(user)
             }
         }
         .onDisappear {
