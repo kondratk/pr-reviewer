@@ -78,10 +78,23 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 450, height: 280)
         .onAppear {
+            // Workaround for a known Apple bug (FB10184971) where MenuBarExtra apps open
+            // settings behind other windows. The .accessory activation policy prevents windows
+            // from coming to front, so we temporarily switch to .regular and revert on disappear.
+            NSApp.setActivationPolicy(.regular)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) {
+                    window.orderFrontRegardless()
+                }
+            }
             tokenInput = service.token
             if let user = service.currentUser {
                 connectionStatus = .connected(user)
             }
+        }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
         }
     }
 
