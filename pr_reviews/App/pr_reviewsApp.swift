@@ -2,21 +2,21 @@ import SwiftUI
 
 @main
 struct pr_reviewsApp: App {
-    @State private var gitHubService = GitHubService()
+    @State private var container = DependencyContainer()
 
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
-                .environment(gitHubService)
+                .environment(container.prListViewModel)
         } label: {
             Image(systemName: "arrow.triangle.pull")
-            Text("\(gitHubService.unreviewedCount)")
+            Text("\(container.prListViewModel.unreviewedCount)")
         }
         .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView()
-                .environment(gitHubService)
+                .environment(container.settingsViewModel)
         }
     }
 }

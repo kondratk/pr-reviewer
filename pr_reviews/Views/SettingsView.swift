@@ -1,22 +1,14 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Environment(GitHubService.self) var service
-    @State private var tokenInput = ""
-    @State private var connectionStatus: ConnectionStatus = .unknown
-    @State private var isTesting = false
-
-    enum ConnectionStatus {
-        case unknown
-        case testing
-        case connected(String)
-        case invalid
-    }
+    @Environment(SettingsViewModel.self) var viewModel
 
     var body: some View {
+        @Bindable var viewModel = viewModel
+
         Form {
             Section("GitHub Personal Access Token") {
-                SecureField("ghp_xxxxxxxxxxxx", text: $tokenInput)
+                SecureField("ghp_xxxxxxxxxxxx", text: $viewModel.tokenInput)
                     .textFieldStyle(.roundedBorder)
 
                 Text("Needs `repo` scope for private repos, or just public access for public repos.")
@@ -27,30 +19,14 @@ struct SettingsView: View {
             Section {
                 HStack {
                     Button("Save") {
-                        service.token = tokenInput
-                        Task {
-                            await service.fetchCurrentUser()
-                            if let user = service.currentUser {
-                                connectionStatus = .connected(user)
-                            }
-                            await service.fetchPullRequests()
-                        }
+                        Task { await viewModel.save() }
                     }
-                    .disabled(tokenInput.isEmpty)
+                    .disabled(viewModel.tokenInput.isEmpty)
 
                     Button("Test Connection") {
-                        Task {
-                            connectionStatus = .testing
-                            isTesting = true
-                            if let login = await service.testToken(tokenInput) {
-                                connectionStatus = .connected(login)
-                            } else {
-                                connectionStatus = .invalid
-                            }
-                            isTesting = false
-                        }
+                        Task { await viewModel.testConnection() }
                     }
-                    .disabled(tokenInput.isEmpty || isTesting)
+                    .disabled(viewModel.tokenInput.isEmpty || viewModel.isTesting)
 
                     Spacer()
 
@@ -60,17 +36,11 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 450, height: 200)
-        .onAppear {
-            tokenInput = service.token
-            if let user = service.currentUser {
-                connectionStatus = .connected(user)
-            }
-        }
     }
 
     @ViewBuilder
     private var statusView: some View {
-        switch connectionStatus {
+        switch viewModel.connectionStatus {
         case .unknown:
             Label("Not verified", systemImage: "questionmark.circle")
                 .font(.caption)
