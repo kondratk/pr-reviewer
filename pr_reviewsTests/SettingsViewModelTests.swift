@@ -11,12 +11,14 @@ struct SettingsViewModelTests {
     private func makeSUT(
         repository: MockRepository = MockRepository(),
         settingsStore: MockSettingsStore = MockSettingsStore(),
-        onTokenSaved: @escaping @MainActor () async -> Void = {}
+        onTokenSaved: @escaping @MainActor () async -> Void = {},
+        onRepositoriesChanged: @escaping @MainActor () -> Void = {}
     ) -> (viewModel: SettingsViewModel, repository: MockRepository, store: MockSettingsStore) {
         let vm = SettingsViewModel(
             repository: repository,
             settingsStore: settingsStore,
-            onTokenSaved: onTokenSaved
+            onTokenSaved: onTokenSaved,
+            onRepositoriesChanged: onRepositoriesChanged
         )
         return (vm, repository, settingsStore)
     }
@@ -172,5 +174,99 @@ struct SettingsViewModelTests {
         await vm.testConnection()
 
         #expect(vm.isTesting == false)
+    }
+
+    // MARK: - Repository Management
+
+    @Test("repositories reads from settings store")
+    func repositoriesReadThrough() {
+        let store = MockSettingsStore()
+        store.repositories = [
+            RepositoryConfig(owner: "a", name: "b"),
+            RepositoryConfig(owner: "c", name: "d"),
+        ]
+        let (vm, _, _) = makeSUT(settingsStore: store)
+
+        #expect(vm.repositories.count == 2)
+        #expect(vm.repositories[0].owner == "a")
+    }
+
+    @Test("canAddRepository returns false when fields are empty")
+    func canAddRepoEmpty() {
+        let (vm, _, _) = makeSUT()
+
+        #expect(vm.canAddRepository == false)
+    }
+
+    @Test("canAddRepository returns false for duplicate")
+    func canAddRepoDuplicate() {
+        let store = MockSettingsStore()
+        store.repositories = [RepositoryConfig(owner: "org", name: "repo")]
+        let (vm, _, _) = makeSUT(settingsStore: store)
+        vm.newRepoOwner = "org"
+        vm.newRepoName = "repo"
+
+        #expect(vm.canAddRepository == false)
+    }
+
+    @Test("canAddRepository returns true for new repo")
+    func canAddRepoValid() {
+        let (vm, _, _) = makeSUT()
+        vm.newRepoOwner = "new-org"
+        vm.newRepoName = "new-repo"
+
+        #expect(vm.canAddRepository == true)
+    }
+
+    @Test("addRepository appends to store and clears fields")
+    func addRepository() {
+        var callbackCalled = false
+        let (vm, _, store) = makeSUT(onRepositoriesChanged: {
+            callbackCalled = true
+        })
+        vm.newRepoOwner = "org"
+        vm.newRepoName = "repo"
+
+        vm.addRepository()
+
+        #expect(store.repositories.count == 2)
+        #expect(store.repositories[1].owner == "org")
+        #expect(store.repositories[1].name == "repo")
+        #expect(vm.newRepoOwner == "")
+        #expect(vm.newRepoName == "")
+        #expect(callbackCalled)
+    }
+
+    @Test("addRepository does not add duplicate")
+    func addRepositoryDuplicate() {
+        let store = MockSettingsStore()
+        store.repositories = [RepositoryConfig(owner: "org", name: "repo")]
+        let (vm, _, _) = makeSUT(settingsStore: store)
+        vm.newRepoOwner = "org"
+        vm.newRepoName = "repo"
+
+        vm.addRepository()
+
+        #expect(store.repositories.count == 1)
+    }
+
+    @Test("removeRepository removes from store and calls callback")
+    func removeRepository() {
+        var callbackCalled = false
+        let store = MockSettingsStore()
+        let repoToRemove = RepositoryConfig(owner: "org", name: "repo")
+        store.repositories = [
+            RepositoryConfig(owner: "test-owner", name: "test-repo"),
+            repoToRemove,
+        ]
+        let (vm, _, _) = makeSUT(settingsStore: store, onRepositoriesChanged: {
+            callbackCalled = true
+        })
+
+        vm.removeRepository(repoToRemove)
+
+        #expect(store.repositories.count == 1)
+        #expect(store.repositories[0].owner == "test-owner")
+        #expect(callbackCalled)
     }
 }

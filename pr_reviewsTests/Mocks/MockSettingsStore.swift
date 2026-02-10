@@ -4,6 +4,9 @@ import Foundation
 final class MockSettingsStore: SettingsStoreProtocol, @unchecked Sendable {
     var token: String = ""
     var currentUser: String?
-    var repositoryOwner: String { "test-owner" }
-    var repositoryName: String { "test-repo" }
+    var repositoryOwner: String { repositories.first?.owner ?? "test-owner" }
+    var repositoryName: String { repositories.first?.name ?? "test-repo" }
+    var repositories: [RepositoryConfig] = [
+        RepositoryConfig(owner: "test-owner", name: "test-repo")
+    ]
 }

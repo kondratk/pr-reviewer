@@ -8,10 +8,12 @@ final class PRListViewModel {
     private(set) var errorMessage: String?
     var activeFilter: FilterOption = .noReviews
 
+    let config: RepositoryConfig
     private let repository: PRRepositoryProtocol
     private let settingsStore: SettingsStoreProtocol
 
-    init(repository: PRRepositoryProtocol, settingsStore: SettingsStoreProtocol) {
+    init(config: RepositoryConfig, repository: PRRepositoryProtocol, settingsStore: SettingsStoreProtocol) {
+        self.config = config
         self.repository = repository
         self.settingsStore = settingsStore
     }
@@ -21,12 +23,12 @@ final class PRListViewModel {
     }
 
     var unreviewedCount: Int {
-        filteredPRs.count
+        FilterOption.noReviews.apply(to: pullRequests, currentUser: settingsStore.currentUser).count
     }
 
     var token: String { settingsStore.token }
-    var repositoryOwner: String { settingsStore.repositoryOwner }
-    var repositoryName: String { settingsStore.repositoryName }
+    var repositoryOwner: String { config.owner }
+    var repositoryName: String { config.name }
 
     func count(for filter: FilterOption) -> Int {
         filter.apply(to: pullRequests, currentUser: settingsStore.currentUser).count
@@ -43,8 +45,8 @@ final class PRListViewModel {
 
         do {
             pullRequests = try await repository.fetchPullRequests(
-                owner: settingsStore.repositoryOwner,
-                repo: settingsStore.repositoryName,
+                owner: config.owner,
+                repo: config.name,
                 token: settingsStore.token
             )
         } catch {

@@ -18,6 +18,42 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
 
+            Section("Repositories") {
+                ForEach(viewModel.repositories) { repo in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(repo.displayName)
+                                .font(.body)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            viewModel.removeRepository(repo)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(viewModel.repositories.count <= 1)
+                    }
+                }
+
+                HStack {
+                    TextField("Owner", text: $viewModel.newRepoOwner)
+                        .textFieldStyle(.roundedBorder)
+                    Text("/")
+                        .foregroundColor(.secondary)
+                    TextField("Repository", text: $viewModel.newRepoName)
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        viewModel.addRepository()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!viewModel.canAddRepository)
+                }
+            }
+
             Section("General") {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, newValue in
@@ -52,11 +88,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 450, height: 280)
+        .frame(width: 450, height: 420)
         .onAppear {
-            // Workaround for a known Apple bug (FB10184971) where MenuBarExtra apps open
-            // settings behind other windows. The .accessory activation policy prevents windows
-            // from coming to front, so we temporarily switch to .regular and revert on disappear.
             NSApp.setActivationPolicy(.regular)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 NSApp.activate(ignoringOtherApps: true)

@@ -84,17 +84,74 @@ struct SettingsStoreTests {
 
     // MARK: - Repository Config
 
-    @Test("repositoryOwner returns expected value")
+    @Test("repositoryOwner returns first repository owner")
     func repositoryOwner() {
         let store = SettingsStore(defaults: makeTestDefaults())
 
         #expect(store.repositoryOwner == "surgeventures")
     }
 
-    @Test("repositoryName returns expected value")
+    @Test("repositoryName returns first repository name")
     func repositoryName() {
         let store = SettingsStore(defaults: makeTestDefaults())
 
         #expect(store.repositoryName == "fresha-android")
+    }
+
+    // MARK: - Repositories
+
+    @Test("Seeds legacy repository on first launch")
+    func seedsLegacyRepo() {
+        let defaults = makeTestDefaults()
+        let store = SettingsStore(defaults: defaults)
+
+        #expect(store.repositories.count == 1)
+        #expect(store.repositories[0].owner == "surgeventures")
+        #expect(store.repositories[0].name == "fresha-android")
+    }
+
+    @Test("Persists repositories to UserDefaults as JSON")
+    func repositoriesPersistence() {
+        let defaults = makeTestDefaults()
+        let store = SettingsStore(defaults: defaults)
+
+        let newRepo = RepositoryConfig(owner: "org", name: "new-repo")
+        store.repositories.append(newRepo)
+
+        let data = defaults.data(forKey: "configured_repositories")!
+        let decoded = try! JSONDecoder().decode([RepositoryConfig].self, from: data)
+
+        #expect(decoded.count == 2)
+        #expect(decoded[1].owner == "org")
+        #expect(decoded[1].name == "new-repo")
+    }
+
+    @Test("Loads persisted repositories on init")
+    func loadsPersistedRepos() {
+        let defaults = makeTestDefaults()
+        let repos = [
+            RepositoryConfig(owner: "a", name: "b"),
+            RepositoryConfig(owner: "c", name: "d"),
+        ]
+        let data = try! JSONEncoder().encode(repos)
+        defaults.set(data, forKey: "configured_repositories")
+
+        let store = SettingsStore(defaults: defaults)
+
+        #expect(store.repositories.count == 2)
+        #expect(store.repositories[0].owner == "a")
+        #expect(store.repositories[1].owner == "c")
+    }
+
+    @Test("Falls back to legacy repo when stored data is empty array")
+    func fallsBackOnEmptyArray() {
+        let defaults = makeTestDefaults()
+        let data = try! JSONEncoder().encode([RepositoryConfig]())
+        defaults.set(data, forKey: "configured_repositories")
+
+        let store = SettingsStore(defaults: defaults)
+
+        #expect(store.repositories.count == 1)
+        #expect(store.repositories[0].owner == "surgeventures")
     }
 }

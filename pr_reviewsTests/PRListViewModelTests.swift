@@ -8,11 +8,14 @@ struct PRListViewModelTests {
 
     // MARK: - Helpers
 
+    private static let defaultConfig = RepositoryConfig(owner: "test-owner", name: "test-repo")
+
     private func makeSUT(
+        config: RepositoryConfig = defaultConfig,
         repository: MockRepository = MockRepository(),
         settingsStore: MockSettingsStore = MockSettingsStore()
     ) -> (viewModel: PRListViewModel, repository: MockRepository, store: MockSettingsStore) {
-        let vm = PRListViewModel(repository: repository, settingsStore: settingsStore)
+        let vm = PRListViewModel(config: config, repository: repository, settingsStore: settingsStore)
         return (vm, repository, settingsStore)
     }
 
@@ -152,7 +155,7 @@ struct PRListViewModelTests {
         #expect(vm.filteredPRs[0].id == 1)
     }
 
-    @Test("unreviewedCount matches filteredPRs count")
+    @Test("unreviewedCount uses noReviews filter count")
     func unreviewedCount() async {
         let repo = MockRepository()
         let store = MockSettingsStore()
@@ -165,7 +168,6 @@ struct PRListViewModelTests {
         let (vm, _, _) = makeSUT(repository: repo, settingsStore: store)
 
         await vm.fetchPullRequests()
-        vm.activeFilter = .noReviews
 
         #expect(vm.unreviewedCount == 2)
     }
@@ -200,17 +202,19 @@ struct PRListViewModelTests {
         #expect(vm.token == "my-token")
     }
 
-    @Test("repositoryOwner delegates to settings store")
+    @Test("repositoryOwner delegates to config")
     func repositoryOwnerProperty() {
-        let (vm, _, _) = makeSUT()
+        let config = RepositoryConfig(owner: "custom-owner", name: "custom-repo")
+        let (vm, _, _) = makeSUT(config: config)
 
-        #expect(vm.repositoryOwner == "test-owner")
+        #expect(vm.repositoryOwner == "custom-owner")
     }
 
-    @Test("repositoryName delegates to settings store")
+    @Test("repositoryName delegates to config")
     func repositoryNameProperty() {
-        let (vm, _, _) = makeSUT()
+        let config = RepositoryConfig(owner: "custom-owner", name: "custom-repo")
+        let (vm, _, _) = makeSUT(config: config)
 
-        #expect(vm.repositoryName == "test-repo")
+        #expect(vm.repositoryName == "custom-repo")
     }
 }

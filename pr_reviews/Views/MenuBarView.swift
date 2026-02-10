@@ -2,31 +2,53 @@ import Combine
 import SwiftUI
 
 struct MenuBarView: View {
-    @Environment(PRListViewModel.self) var viewModel
+    @Environment(MultiRepoViewModel.self) var multiRepo
 
     let timer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        @Bindable var multiRepo = multiRepo
+
         VStack(spacing: 0) {
-            headerSection
-            Divider()
-            filterSection
-            Divider()
-            contentSection
+            if multiRepo.repoViewModels.count > 1 {
+                repoPickerSection
+                Divider()
+            }
+
+            if let viewModel = multiRepo.selectedViewModel {
+                headerSection(viewModel)
+                Divider()
+                filterSection(viewModel)
+                Divider()
+                contentSection(viewModel)
+            }
         }
         .frame(width: 380)
         .task {
-            if viewModel.pullRequests.isEmpty {
-                await viewModel.fetchCurrentUser()
-                await viewModel.fetchPullRequests()
-            }
+            await multiRepo.fetchAllRepositories()
         }
         .onReceive(timer) { _ in
-            Task { await viewModel.fetchPullRequests() }
+            Task {
+                await multiRepo.fetchAllRepositories()
+            }
         }
     }
 
-    private var headerSection: some View {
+    private var repoPickerSection: some View {
+        @Bindable var multiRepo = multiRepo
+
+        return Picker("Repository", selection: $multiRepo.selectedRepoId) {
+            ForEach(multiRepo.repoViewModels, id: \.config.id) { vm in
+                Text(vm.config.name)
+                    .tag(Optional(vm.config.id))
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private func headerSection(_ viewModel: PRListViewModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(viewModel.repositoryName)
@@ -57,7 +79,7 @@ struct MenuBarView: View {
         .padding()
     }
 
-    private var filterSection: some View {
+    private func filterSection(_ viewModel: PRListViewModel) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(FilterOption.allCases, id: \.self) { filter in
@@ -76,7 +98,7 @@ struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private var contentSection: some View {
+    private func contentSection(_ viewModel: PRListViewModel) -> some View {
         if viewModel.isLoading && viewModel.pullRequests.isEmpty {
             VStack(spacing: 8) {
                 ProgressView()

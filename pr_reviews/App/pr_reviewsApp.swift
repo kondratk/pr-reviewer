@@ -7,10 +7,10 @@ struct pr_reviewsApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
-                .environment(container.prListViewModel)
+                .environment(container.multiRepoViewModel)
         } label: {
             Image(systemName: "arrow.triangle.pull")
-            Text("\(container.prListViewModel.unreviewedCount)")
+            Text("\(container.multiRepoViewModel.totalUnreviewedCount)")
         }
         .menuBarExtraStyle(.window)
 
